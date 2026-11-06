@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>HQ</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div id="clock">--:--</div>
+  <div id="status" class="status off">connecting…</div>
+</header>
+
+<main>
+  <section>
+    <h2>Lights</h2>
+    <div id="lights" class="grid"></div>
+  </section>
+
+  <section>
+    <h2>Heating</h2>
+    <div id="climate" class="grid"></div>
+  </section>
+
+  <section>
+    <h2>Touch test</h2>
+    <div id="latency" class="latency">
+      <p>Tap any tile. The number is the time from your tap to Home Assistant confirming the change.</p>
+      <div class="latency-row"><span>Last</span><strong id="lat-last">–</strong></div>
+      <div class="latency-row"><span>Average</span><strong id="lat-avg">–</strong></div>
+      <div class="latency-row"><span>Worst</span><strong id="lat-max">–</strong></div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

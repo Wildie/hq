@@ -1,0 +1,15 @@
+#!/bin/bash
+# Launched inside cage by hq-kiosk.service. HQ_URL comes from /etc/hq/kiosk.env.
+exec /usr/bin/chromium \
+  --kiosk "$HQ_URL" \
+  --ozone-platform=wayland \
+  --enable-features=UseOzonePlatform \
+  --touch-events=enabled \
+  --disable-pinch \
+  --overscroll-history-navigation=0 \
+  --noerrdialogs --disable-infobars --no-first-run \
+  --disable-session-crashed-bubble \
+  --password-store=basic \
+  --check-for-update-interval=31536000 \
+  --autoplay-policy=no-user-gesture-required \
+  --user-data-dir=/home/kiosk/.hq-chromium
