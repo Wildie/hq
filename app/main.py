@@ -89,28 +89,42 @@ class HomeAssistant:
             log.info("connected to HA %s", auth.get("ha_version"))
             self.connected = True
 
-            # Full state snapshot, then live updates.
-            states = await self._request({"type": "get_states"})
-            self.states = {s["entity_id"]: s for s in states}
-            await self._request({"type": "subscribe_events", "event_type": "state_changed"})
-            await self._broadcast({"type": "ha_connected", "connected": True})
-            await self._broadcast({"type": "states", "states": list(self.states.values())})
+            # Reader runs independently so requests below can get their replies.
+            reader = asyncio.create_task(self._reader(ws))
+            try:
+                states = await self._request({"type": "get_states"})
+                self.states = {s["entity_id"]: s for s in states}
+                await self._request({"type": "subscribe_events", "event_type": "state_changed"})
+                log.info("loaded %d entities", len(self.states))
+                await self._broadcast({"type": "ha_connected", "connected": True})
+                await self._broadcast({"type": "states", "states": list(self.states.values())})
+                await reader  # runs until the socket closes
+            finally:
+                reader.cancel()
+                for fut in self._pending.values():
+                    if not fut.done():
+                        fut.set_exception(RuntimeError("HA connection closed"))
+                self._pending.clear()
+                self._ws = None
 
-            async for raw in ws:
-                msg = json.loads(raw)
-                mid = msg.get("id")
-                if msg.get("type") == "result" and mid in self._pending:
-                    fut = self._pending.pop(mid)
-                    if msg.get("success"):
-                        fut.set_result(msg.get("result"))
-                    else:
-                        fut.set_exception(RuntimeError(str(msg.get("error"))))
-                elif msg.get("type") == "event":
-                    data = msg["event"].get("data", {})
-                    new = data.get("new_state")
-                    if new:
-                        self.states[new["entity_id"]] = new
-                        await self._broadcast({"type": "state", "state": new})
+    async def _reader(self, ws: websockets.ClientConnection) -> None:
+        async for raw in ws:
+            msg = json.loads(raw)
+            mid = msg.get("id")
+            if msg.get("type") == "result" and mid in self._pending:
+                fut = self._pending.pop(mid)
+                if fut.done():
+                    continue
+                if msg.get("success"):
+                    fut.set_result(msg.get("result"))
+                else:
+                    fut.set_exception(RuntimeError(str(msg.get("error"))))
+            elif msg.get("type") == "event":
+                data = msg["event"].get("data", {})
+                new = data.get("new_state")
+                if new:
+                    self.states[new["entity_id"]] = new
+                    await self._broadcast({"type": "state", "state": new})
 
     # ---- HA requests -----------------------------------------------------
 
