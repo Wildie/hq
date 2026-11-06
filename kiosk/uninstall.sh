@@ -11,5 +11,4 @@ systemctl set-default multi-user.target
 userdel -r kiosk 2>/dev/null || true
 apt-get remove -y cage chromium mesa-vulkan-drivers fonts-noto-core || true
 apt-get autoremove -y
-# firmware-amd-graphics is left installed: harmless and useful for the iGPU.
 echo "Kiosk removed."

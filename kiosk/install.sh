@@ -11,20 +11,24 @@ set -euo pipefail
 
 URL="${1:?usage: install.sh <HQ URL>}"
 KIOSK_UID=1500
-PACKAGES="cage chromium firmware-amd-graphics mesa-vulkan-drivers libgl1-mesa-dri fonts-noto-core"
+PACKAGES="cage chromium mesa-vulkan-drivers libgl1-mesa-dri fonts-noto-core"
 
 if [ "$(id -u)" -ne 0 ]; then echo "run as root" >&2; exit 1; fi
 . /etc/os-release
 
-# amdgpu needs non-free firmware; Proxmox's default sources don't include it.
-if ! grep -rqs non-free-firmware /etc/apt/sources.list /etc/apt/sources.list.d/; then
-  cat > /etc/apt/sources.list.d/hq-firmware.sources <<EOF
+# GPU firmware. Proxmox hosts already have it via pve-firmware, which conflicts
+# with Debian's firmware-amd-graphics, so only plain Debian boxes get that.
+if ! dpkg -s pve-firmware >/dev/null 2>&1; then
+  if ! grep -rqs non-free-firmware /etc/apt/sources.list /etc/apt/sources.list.d/; then
+    cat > /etc/apt/sources.list.d/hq-firmware.sources <<EOF
 Types: deb
 URIs: http://deb.debian.org/debian
 Suites: ${VERSION_CODENAME}
 Components: non-free-firmware
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
+  fi
+  PACKAGES="$PACKAGES firmware-amd-graphics"
 fi
 
 apt-get update
